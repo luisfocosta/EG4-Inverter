@@ -1,6 +1,6 @@
 {
-  "domain": "eg4_monitor",
-  "name": "EG4 Monitor",
+  "domain": "eg4_inverter",
+  "name": "EG4 Inverter",
   "codeowners": ["@snell-evan-itt"],
   "config_flow": true,
   "documentation": "https://github.com/snell-evan-itt/EG4-Inverter",
