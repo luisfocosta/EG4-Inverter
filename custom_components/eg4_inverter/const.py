@@ -1,6 +1,6 @@
 """Constants for the EG4 Monitor integration."""
 
-DOMAIN = "eg4_monitor"
+DOMAIN = "eg4_inverter"
 
 # Base URLs
 BASE_URL = "https://monitor.eg4electronics.com/WManage"
