@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           cd "${{ github.workspace }}/custom_components/eg4_inverter"
-          zip ecoflow-cloud.zip -r ./
+          zip eg4-inverter.zip -r ./
 
       - name: 🔏 Sign release package
         uses: sigstore/gh-action-sigstore-python@v3.0.0
