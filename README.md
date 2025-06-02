@@ -18,28 +18,30 @@ This is a custom Home Assistant integration for monitoring EG4 inverter systems.
 
 ## Features
 
-- Real-time monitoring of your EG4 inverter system
-- Battery State of Charge monitoring
-- Solar production monitoring
-- Grid import/export monitoring
-- Battery charge/discharge monitoring
-- Customizable update intervals
-- User-friendly sensor names and icons
+- Retrieves status and production metrics from an EG4 Inverter.
+- Allows you to expose the inverter’s data to Home Assistant sensors.
+- Easy setup and configuration via UI.
+
+<p align="center">
+  <a href="docs/images/01.png" target="_blank">
+    <img src="docs/images/01.png" alt="EG4 Inverter Integration Selection" height="300"/>
+  </a>
+  <a href="docs/images/02.png" target="_blank">
+    <img src="docs/images/02.png" alt="EG4 Configuration" height="300"/>
+  </a>
+  <a href="docs/images/03.png" target="_blank">
+    <img src="docs/images/03.png" alt="EG4 Added" height="300"/>
+  </a>
+  <a href="docs/images/04.png" target="_blank">
+    <img src="docs/images/04.png" alt="EG4 Entities" height="300"/>
+  </a>
+  <a href="docs/images/05.png" target="_blank">
+    <img src="docs/images/05.png" alt="EG4 Energy Dashboard" height="300"/>
+  </a>
+</p>
 
 ## Configuration
 
 The integration requires your EG4 portal credentials:
 - Username
 - Password
-
-## Available Sensors
-
-| Sensor | Unit | Description |
-|--------|------|-------------|
-| Battery State of Charge | % | Current battery charge level |
-| Solar Production | W | Current solar panel power production |
-| Grid Power | W | Current grid power flow |
-| Battery Power | W | Current battery power flow |
-| Daily Energy Production | kWh | Total solar energy produced today |
-| Daily Grid Import/Export | kWh | Net grid energy exchange |
-| Daily Battery Charge/Discharge | kWh | Net battery energy exchange |

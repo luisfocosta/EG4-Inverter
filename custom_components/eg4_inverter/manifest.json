@@ -7,8 +7,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/snell-evan-itt/EG4-Inverter/issues",
   "requirements": [
-    "aiohttp>=3.8.0",
-    "beautifulsoup4>=4.9.3"
+        "eg4-inverter-api>=0.1.5"
   ],
   "version": "0.0.0"
 }

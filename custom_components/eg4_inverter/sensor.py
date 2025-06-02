@@ -1,235 +1,251 @@
-"""Support for EG4 Monitor sensors."""
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import Any, Callable
-
+import logging
+from typing import Any, Dict
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
-    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfEnergy,
-    UnitOfPower,
-    UnitOfElectricPotential,
-    UnitOfFrequency,
-)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
+from homeassistant.helpers.typing import DiscoveryInfoType
+
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfPower,
+    UnitOfElectricPotential,
+    UnitOfTemperature,
+    UnitOfEnergy,
+    UnitOfFrequency,
+    UnitOfTime,
+    UnitOfMass,
+)
+from .coordinator import EG4DataCoordinator
+from .const import DOMAIN
+from .definitions import (
+    PER_BATTERY_DEFS,
+    BATTERY_SUMMARY_SENSORS,
+    ENERGY_SENSORS,
+    RUNTIME_SENSORS,
+    SETTING_SENSORS,
 )
 
-from .const import DOMAIN
+_LOGGER = logging.getLogger(__name__)
 
-@dataclass
-class EG4SensorEntityDescription(SensorEntityDescription):
-    """Class describing EG4 sensor entities."""
-    value_fn: Callable[[dict[str, Any]], StateType] = None
 
-SENSOR_TYPES: dict[str, EG4SensorEntityDescription] = {
-    "battery_soc": EG4SensorEntityDescription(
-        key="battery_soc",
-        name="Battery State of Charge",
-        native_unit_of_measurement=PERCENTAGE,
-        device_class=SensorDeviceClass.BATTERY,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Battery"]["SOC"],
-    ),
-    "battery_power": EG4SensorEntityDescription(
-        key="battery_power",
-        name="Battery Power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Battery"]["Power"],
-    ),
-    "battery_voltage": EG4SensorEntityDescription(
-        key="battery_voltage",
-        name="Battery Voltage",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        device_class=SensorDeviceClass.VOLTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Battery"]["Voltage"],
-    ),
-    "solar_power": EG4SensorEntityDescription(
-        key="solar_power",
-        name="Solar Power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Solar"]["Total Power"],
-    ),
-    "pv1_power": EG4SensorEntityDescription(
-        key="pv1_power",
-        name="PV1 Power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Solar"]["PV1"]["Power"],
-    ),
-    "pv2_power": EG4SensorEntityDescription(
-        key="pv2_power",
-        name="PV2 Power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Solar"]["PV2"]["Power"],
-    ),
-    "grid_power": EG4SensorEntityDescription(
-        key="grid_power",
-        name="Grid Power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Grid"]["Power"],
-    ),
-    "grid_voltage": EG4SensorEntityDescription(
-        key="grid_voltage",
-        name="Grid Voltage",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        device_class=SensorDeviceClass.VOLTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Grid"]["Voltage"],
-    ),
-    "grid_frequency": EG4SensorEntityDescription(
-        key="grid_frequency",
-        name="Grid Frequency",
-        native_unit_of_measurement=UnitOfFrequency.HERTZ,
-        device_class=SensorDeviceClass.FREQUENCY,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Grid"]["Frequency"],
-    ),
-    "load_power": EG4SensorEntityDescription(
-        key="load_power",
-        name="Load Power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["Load"]["Power"],
-    ),
-    "eps_power": EG4SensorEntityDescription(
-        key="eps_power",
-        name="EPS Power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["EPS"]["Power"],
-    ),
-    "eps_frequency": EG4SensorEntityDescription(
-        key="eps_frequency",
-        name="EPS Frequency",
-        native_unit_of_measurement=UnitOfFrequency.HERTZ,
-        device_class=SensorDeviceClass.FREQUENCY,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data["EPS"]["Frequency"],
-    ),
-    "today_solar": EG4SensorEntityDescription(
-        key="today_solar",
-        name="Today's Solar Generation",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda data: data["Energy"]["Today"]["Solar Generation"],
-    ),
-    "today_grid_import": EG4SensorEntityDescription(
-        key="today_grid_import",
-        name="Today's Grid Import",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda data: data["Energy"]["Today"]["Grid Import"],
-    ),
-    "today_grid_export": EG4SensorEntityDescription(
-        key="today_grid_export",
-        name="Today's Grid Export",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda data: data["Energy"]["Today"]["Grid Export"],
-    ),
-    "total_solar": EG4SensorEntityDescription(
-        key="total_solar",
-        name="Total Solar Generation",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda data: data["Energy"]["Total"]["Solar Generation"],
-    ),
-    "total_grid_import": EG4SensorEntityDescription(
-        key="total_grid_import",
-        name="Total Grid Import",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda data: data["Energy"]["Total"]["Grid Import"],
-    ),
-    "total_grid_export": EG4SensorEntityDescription(
-        key="total_grid_export",
-        name="Total Grid Export",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=lambda data: data["Energy"]["Total"]["Grid Export"],
-    ),
-}
+def parse_float(value: Any, scale: float = 1.0) -> float | None:
+    """Helper to convert strings/numbers to float, applying a scale if needed."""
+    try:
+        if isinstance(value, str):
+            value = value.strip()
+            if not value or value == "--":
+                return None
+        return float(value) * scale
+    except (ValueError, TypeError):
+        return None
 
+
+# -------------------------------------------------------------------------
+#   SETUP: CREATE ENTITIES FROM DEFINITIONS
+#    We also show how to create multiple sensors for each battery in battery_units.
+# -------------------------------------------------------------------------
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up EG4 sensor based on a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    
-    # Get enabled sensors from options
-    enabled_sensors = {
-        sensor_id: description
-        for sensor_id, description in SENSOR_TYPES.items()
-        if entry.options.get(sensor_id, True)  # Default to enabled if not in options
-    }
-    
-    async_add_entities(
-        EG4Sensor(coordinator, description)
-        for description in enabled_sensors.values()
-    )
+    """Set up EG4 inverter sensors from a config entry."""
+    coordinator: EG4DataCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-class EG4Sensor(CoordinatorEntity, SensorEntity):
-    """Representation of an EG4 sensor."""
-    
-    entity_description: EG4SensorEntityDescription
-    
-    def __init__(
-        self,
-        coordinator: DataUpdateCoordinator,
-        description: EG4SensorEntityDescription,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator)
-        self.entity_description = description
-        self._attr_unique_id = f"{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, coordinator.data.get("serial_number", "unknown"))},
-            "name": "EG4 Inverter",
-            "manufacturer": "EG4 Electronics",
-            "model": coordinator.data.get("model", "unknown"),
-        }
-        
+    entities = []
+
+    # 4.1) ENERGY SENSORS
+    for sensor_def in ENERGY_SENSORS:
+        if sensor_def.get("type", "") == "sensor":
+            entities.append(
+                EG4InverterSensor(coordinator, entry, sensor_def, parent_key="energy")
+            )
+
+    # 4.2) RUNTIME SENSORS
+    for sensor_def in RUNTIME_SENSORS:
+        if sensor_def.get("type", "") == "sensor":
+            entities.append(
+                EG4InverterSensor(coordinator, entry, sensor_def, parent_key="runtime")
+            )
+
+    # 4.3) SETTINGS SENSORS
+    for sensor_def in SETTING_SENSORS:
+        if sensor_def.get("type", "") == "sensor":
+            entities.append(
+                EG4InverterSensor(coordinator, entry, sensor_def, parent_key="settings")
+            )
+
+    # 4.4) BATTERY SUMMARY SENSORS
+    for sensor_def in BATTERY_SUMMARY_SENSORS:
+        if sensor_def.get("type", "") == "sensor":
+            entities.append(
+                EG4InverterSensor(coordinator, entry, sensor_def, parent_key="battery")
+            )
+
+    # 4.5) PER-BATTERY UNITS
+    #     If you want a sensor for each battery in battery_units, create them here:
+    battery_data = coordinator.data.get("battery", {})
+    battery_units = battery_data.battery_units or []
+    for binfo in battery_units:
+        for subdef in PER_BATTERY_DEFS:
+            subdef = subdef.copy()
+            if subdef["type"] != "sensor":
+                continue
+            name_template = subdef.get("name", "")
+            dynamic_name = name_template.format(binfo=binfo)
+            if name_template != dynamic_name:
+                subdef["name"] = dynamic_name
+            entities.append(EG4PerBatterySensor(coordinator, entry, binfo, subdef))
+
+    async_add_entities(entities)
+
+
+# -------------------------------------------------------------------------
+# 5) BASE SENSOR CLASSES
+# -------------------------------------------------------------------------
+class EG4BaseSensor(SensorEntity):
+    """Common base for EG4 sensors that integrates with the coordinator."""
+
+    def __init__(self, coordinator, entry):
+        """Initialize the base sensor."""
+        self._coordinator = coordinator
+        self._entry = entry
+
     @property
-    def native_value(self) -> StateType:
-        """Return the state of the sensor."""
-        try:
-            return self.entity_description.value_fn(self.coordinator.data)
-        except (KeyError, TypeError):
-            return None
-            
+    def should_poll(self) -> bool:
+        """No polling, coordinator notifies us."""
+        return False
+
+    async def async_added_to_hass(self):
+        """When entity is added to HA, subscribe to coordinator updates."""
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
     @property
     def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.last_update_success and super().available
+        """Return true if coordinator was able to update successfully."""
+        return self._coordinator.last_update_success
+
+    @property
+    def device_info(self):
+        """Put all sensors under one device in the UI."""
+        return {
+            "identifiers": {(DOMAIN, self._entry.entry_id)},
+            "name": "EG4 Inverter",
+            "manufacturer": "EG4",
+        }
+
+
+class EG4InverterSensor(EG4BaseSensor):
+    """A sensor for a single data point in either energy, runtime, or battery summary."""
+
+    def __init__(self, coordinator, entry, sensor_def: Dict[str, Any], parent_key: str):
+        super().__init__(coordinator, entry)
+        self._sensor_def = sensor_def
+        self._parent_key = parent_key
+
+        # Build a unique_id from the config entry + sensor key
+        self._attr_unique_id = f"{entry.entry_id}_{parent_key}_{sensor_def['key']}"
+        self._attr_name = sensor_def.get("name", sensor_def["key"])
+
+        # Optional icon or device_class
+        icon = sensor_def.get("icon")
+        if icon:
+            self._attr_icon = icon
+
+        self._attr_device_class = sensor_def.get("device_class")
+        self._attr_state_class = sensor_def.get("state_class")
+
+        # Unit of measurement
+        self._unit = sensor_def.get("unit")
+        self._scale = sensor_def.get("scale", 1.0)
+        calc = sensor_def.get("calc")
+        if calc:
+            self._calc = calc
+
+    @property
+    def native_unit_of_measurement(self):
+        return self._unit
+
+    @property
+    def native_value(self):
+        data = self._coordinator.data.get(self._parent_key, {})
+        try:
+            raw_value = getattr(data, self._sensor_def["key"])
+        except Exception as e:
+            try:
+                raw_value = data.get(self._sensor_def["key"])
+            except Exception as e2:
+                _LOGGER.error(f"{self._sensor_def} with error {e2}")
+                _LOGGER.error(f"Data {vars(data)}")
+                return None
+
+        # Special case: parse CO2/Coal text like "367.69 kG"
+        if self._sensor_def.get("co2_parse"):
+            # Extract float portion
+            return parse_float(str(raw_value).split(" ")[0], 1.0)
+
+        # Otherwise, try to parse as float if the sensor is numeric
+        if self._unit or self._scale != 1.0:
+            return parse_float(raw_value, self._scale)
+
+        # If it's truly a string (like "statusText"), just return it
+        return raw_value
+
+
+class EG4PerBatterySensor(EG4BaseSensor):
+    """A sensor for each battery in battery_units."""
+
+    def __init__(
+        self,
+        coordinator,
+        entry,
+        battery_info: Dict[str, Any],
+        sensor_def: Dict[str, Any],
+    ):
+        super().__init__(coordinator, entry)
+        self._sensor_def = sensor_def.copy()
+        self._bat_index = battery_info.batIndex
+
+        key = sensor_def["key"]
+        self._attr_unique_id = f"{entry.entry_id}_battery_{self._bat_index}_{key}"
+        self._attr_name = sensor_def.get("name", f"{self._bat_index} {key}")
+        self._unit = sensor_def.get("unit")
+        self._scale = sensor_def.get("scale", 1.0)
+        self._attr_device_class = sensor_def.get("device_class")
+        self._attr_state_class = sensor_def.get("state_class")
+        icon = sensor_def.get("icon")
+        if icon:
+            self._attr_icon = icon
+        calc = sensor_def.get("calc")
+        if calc:
+            self._calc = calc
+
+    @property
+    def native_unit_of_measurement(self):
+        return self._unit
+
+    @property
+    def native_value(self):
+        battery_data = self._coordinator.data.get("battery", {})
+        battery_units = getattr(battery_data, "battery_units", [])
+
+        # Lookup battery by index
+        target = next((b for b in battery_units if getattr(b, "batIndex", None) == self._bat_index), None)
+        if target is None:
+            return None
+
+        try:
+            raw_value = getattr(target, self._sensor_def["key"])
+        except Exception:
+            raw_value = target.get(self._sensor_def["key"])
+
+        if self._unit or self._scale != 1.0:
+            return parse_float(raw_value, self._scale)
+        return raw_value
