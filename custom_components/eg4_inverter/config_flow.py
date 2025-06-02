@@ -19,7 +19,7 @@ from .eg4_api import EG4API
 
 _LOGGER = logging.getLogger(__name__)
 
-CONFIG_SCHEMA = vol.Schema(
+STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
@@ -160,7 +160,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 
         return self.async_show_form(
             step_id="user",
-            data_schema=CONFIG_SCHEMA,
+            data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
         )
 
