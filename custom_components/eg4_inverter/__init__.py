@@ -27,14 +27,15 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.SENSOR]
 DEFAULT_SCAN_INTERVAL = 30
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the EG4 Monitor component."""
-    hass.data[DOMAIN] = {}
-    return True
+# async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+#     """Set up the EG4 Monitor component."""
+#     hass.data[DOMAIN] = {}
+#     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up EG4 Monitor from a config entry."""
     _LOGGER.debug("Setting up EG4 Monitor integration")
+    hass.data[DOMAIN] = {}
     
     session = async_get_clientsession(hass)
     
