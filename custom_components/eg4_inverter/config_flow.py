@@ -65,13 +65,6 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    # TODO validate the data can be used to set up a connection.
-
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data[CONF_USERNAME], data[CONF_PASSWORD]
-    # )
     session = async_get_clientsession(hass)
     api = EG4InverterAPI(
         data[CONF_USERNAME],
@@ -115,8 +108,6 @@ class EG4InverterConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        # Remove this method and the ExampleOptionsFlowHandler class
-        # if you do not want any options for your integration.
         return OptionsFlowHandler(config_entry)
         # return ExampleOptionsFlowHandler(config_entry)
 
@@ -125,31 +116,25 @@ class EG4InverterConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         _LOGGER.debug("EG4 Inverter async_step_user() called")
         """Handle the initial step."""
-        # Called when you initiate adding an integration via the UI
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # The form has been filled in and submitted, so process the data provided.
+
             try:
-                # Validate that the setup data is valid and if not handle errors.
-                # The errors["base"] values match the values in your strings.json and translation files.
                 info = await validate_input(self.hass, user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
+            except Exception:  
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
             if "base" not in errors:
-                # Validation was successful, so create a unique id for this instance of your integration
-                # and create the config entry.
                 await self.async_set_unique_id(info.get("title"))
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=info["title"], data=user_input)
 
-        # Show initial form.
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
@@ -181,7 +166,7 @@ class EG4InverterConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
+            except Exception:  
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             else:
@@ -212,18 +197,6 @@ class OptionsFlowHandler(OptionsFlow):
             options = self._entry.options | user_input
             return self.async_create_entry(title="", data=options)
 
-        # It is recommended to prepopulate options fields with default values if available.
-        # These will be the same default values you use on your coordinator for setting variable values
-        # if the option has not been set.
-        # data_schema = vol.Schema(
-        #    {
-        #        vol.Optional(
-        #            CONF_BASE_URL, default="https://monitor.eg4electronics.com"
-        #        ): str,
-        #    }
-        # )
-
-        # return self.async_show_form(step_id="init", data_schema=data_schema)
         return self.async_show_form(step_id="init", data_schema=STEP_USER_DATA_SCHEMA)
 
 
