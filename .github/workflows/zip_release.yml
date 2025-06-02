@@ -25,20 +25,20 @@ jobs:
           version="${version#v}"
           yq e -P -o=json \
             -i ".version = \"${version}\"" \
-            "${{ github.workspace }}/custom_components/eg4_monitor/manifest.json"
+            "${{ github.workspace }}/custom_components/eg4_inverter/manifest.json"
 
       - name: 📦 Created zipped release package
         shell: bash
         run: |
-          cd "${{ github.workspace }}/custom_components/eg4_monitor"
+          cd "${{ github.workspace }}/custom_components/eg4_inverter"
           zip ecoflow-cloud.zip -r ./
 
       - name: 🔏 Sign release package
         uses: sigstore/gh-action-sigstore-python@v3.0.0
         with:
-          inputs: ${{ github.workspace }}/custom_components/eg4_monitor/eg4-inverter.zip
+          inputs: ${{ github.workspace }}/custom_components/eg4_inverter/eg4-inverter.zip
 
       - name: ⬆️ Upload zip to release
         uses: softprops/action-gh-release@v2.2.2
         with:
-          files: ${{ github.workspace }}/custom_components/eg4_monitor/eg4-inverter.zip
+          files: ${{ github.workspace }}/custom_components/eg4_inverter/eg4-inverter.zip
